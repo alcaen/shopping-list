@@ -8,10 +8,27 @@ interface ItemModalProps {
 
 const ItemModal: FC<ItemModalProps> = ({ isOpen }) => {
   const [itemName, setItemName] = useState<string>("");
-  const addItem = api.items.addItem.useMutation();
+  const utils = api.useContext();
+
+  // Otherwhise when you mutate and "refetch" data is slower but is sync wiath db
+  const addItem = api.items.addItem.useMutation({
+    onSuccess: async (newItem) => {
+      await utils.items.getAll.cancel();
+      utils.items.getAll.setData(undefined, (prev) => {
+        if (prev) {
+          return [...prev, newItem];
+        } else {
+          return [newItem];
+        }
+      });
+    },
+    onSettled: async () => {
+      await utils.items.getAll.invalidate();
+    },
+  });
 
   return (
-    <div className="absolute inset-0 z-0 flex items-center justify-center bg-black/75">
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/75">
       <div className=" relative z-10 flex w-96 flex-col space-y-5 rounded-lg bg-gray-100 p-5">
         <h3 className="font text-xl font-medium ">Name of item:</h3>
         <input
